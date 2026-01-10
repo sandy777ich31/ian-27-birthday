@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Happy Birthday!</title>
+  <!-- 載入 Tailwind CSS (排版工具) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 載入 React (核心引擎) -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- 載入 Babel (讓瀏覽器看懂 React 語法) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <style>
+    /* 自定義樣式補充 */
+    .perspective-1000 { perspective: 1000px; }
+    .transform-style-3d { transform-style: preserve-3d; }
+    .backface-hidden { backface-visibility: hidden; }
+    .rotate-y-180 { transform: rotateY(180deg); }
+    
+    /* 隱藏捲軸但保留功能 */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    @keyframes float {
+      0% { transform: translateY(0px) rotate(0deg); opacity: 0; }
+      50% { opacity: 0.6; }
+      100% { transform: translateY(-100vh) rotate(360deg); opacity: 0; }
+    }
+    
+    .floating-heart {
+      position: absolute;
+      animation: float 15s linear infinite;
+      bottom: -100px;
+    }
+
+    .folder-card:active { transform: scale(0.98); }
+    
+    /* 確保輸入框樣式 */
+    .prose { max-width: 65ch; }
+  </style>
+</head>
+<body class="bg-sky-100">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // --- 圖示組件 (因為不用安裝套件，這裡手動定義圖示) ---
+    const Icon = ({ children, size = 24, className = "" }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{children}</svg>
+    );
+    const Heart = (props) => <Icon {...props}><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" /></Icon>;
+    const Gift = (props) => <Icon {...props}><rect x="3" y="8" width="18" height="4" rx="1" /><path d="M12 8v13" /><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7" /><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.9 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5" /></Icon>;
+    const Camera = (props) => <Icon {...props}><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" /><circle cx="12" cy="13" r="3" /></Icon>;
+    const ArrowLeft = (props) => <Icon {...props}><path d="m12 19-7-7 7-7" /><path d="M19 12H5" /></Icon>;
+    const FolderHeart = (props) => <Icon {...props}><path d="M11 20H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H20a2 2 0 0 1 2 2v2" /><path d="M19 22c1.7-1.7 3.3-2.3 3.3-4.3 0-1.3-1-2.2-2.3-2.2-1 0-1.6.6-2 1.4-.4-.8-1-1.4-2-1.4-1.3 0-2.3.9-2.3 2.2 0 2 1.6 2.6 3.3 4.3Z" /></Icon>;
+    const Sparkles = (props) => <Icon {...props}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" /><path d="M5 3v4" /><path d="M9 5H3" /><path d="M5 3v4" /><path d="M9 5H3" /></Icon>; // Simplified sparkles
+    const ChevronLeft = (props) => <Icon {...props}><path d="m15 18-6-6 6-6" /></Icon>;
+    const ChevronRight = (props) => <Icon {...props}><path d="m9 18 6-6-6-6" /></Icon>;
+    const PenTool = (props) => <Icon {...props}><path d="m12 19 7-7 3 3-7 7-3-3z" /><path d="m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" /><path d="m2 2 7.586 7.586" /><circle cx="11" cy="11" r="2" /></Icon>;
+
+    // --- 1. 設定男友的名字 ---
+    const BOYFRIEND_NAME = "又老一歲ㄉ恩恩";
+
+    // --- 2. 設定生日祝福的主標題 ---
+    const TITLE_MESSAGE = "Happy Birthday!";
+
+    // --- 3. 旅遊資料夾設定 ---
+    const ALBUMS = [
+      {
+        id: "trip-0104",
+        dateRange: "01月04日",
+        title: "1月熟悉的北",
+        description: "沒放到其他張",
+        // 這裡可以寫文章
+        article: `這次的熟悉的北去到進擊的巨人的展、還有看巨人的電影、還有吃北七底家
+        
+        有吵架 我很生氣 可是也忘記在氣什麼了ㄏㄏ
+        
+        也有去看福利連的展`, 
+        photos: [
+          { url: "https://i.ibb.co/RkMFkmnx/IMG-4770.jpg", date: "0104", message: "合照一張，你的頭髮還沒捲捲 我的頭髮還是短短" },
+        ]
+      },
+      {
+        id: "trip-0322",
+        dateRange: "03月22日 - 03月23日",
+        title: "3月嘉義二月山家",
+        description: "窩在房間玩switch",
+        // 這裡可以寫文章
+        article: `早上先去喝存很久的杏仁茶
+        可是沒到特別好喝
+        還有去爬山逛老街、飯店還有下午茶
+        那天晚上好冷好冷，吃晚餐的時候原本只有我們有預約，
+        然後老闆娘人很好，後面爬山下來的人也一起煮飯給他們吃，
+        吃完走出來外面真的好冷喔，回飯店玩很久的switch
+        喜歡!!!!
+        
+        隔天還去了好幾年沒去的阿里山，阿里山上有很多開的很漂亮的花`, 
+        photos: [
+          { url: "https://i.ibb.co/0SNqbKj/IMG-6005.jpg", date: "0322", message: "晚餐的魚魚 我的比較好吃" },
+          { url: "https://i.ibb.co/1GFd0JnJ/IMG-5997.jpg", date: "0322", message: "飯店提供的下午茶" },
+          { url: "https://i.ibb.co/C5T8Cj93/IMG-6002.jpg", date: "0322", message: "這個是老街路邊的鏡子" },
+          { url: "https://i.ibb.co/dsNS2VQx/IMG-5994.jpg", date: "0322", message: "爬山行程!我們都喜歡爬山" },
+          { url: "https://i.ibb.co/SwK85f64/IMG-6008.jpg", date: "0322", message: "房間看出去的玻璃 很大很喜歡很漂亮" },
+          { url: "https://i.ibb.co/zVhqYL13/IMG-5991.jpg", date: "0322", message: "嘉義的杏仁茶" },
+          { url: "https://i.ibb.co/5gPhyC99/IMG-6011.jpg", date: "0323", message: "阿里山的小火車車車" },
+          { url: "https://i.ibb.co/B5XT0h7j/IMG-6032.jpg", date: "0323", message: "-3-" },
+          { url: "https://i.ibb.co/d098Yc3L/IMG-6015.jpg", date: "0323", message: "阿里山開的漂亮花花" },
+        ]
+      },
+      {
+        id: "trip-0401",
+        dateRange: "04月01日",
+        title: "4月在台南你帶我吃得肉粽",
+        description: "也有看到這個照片 有印象轉角的肉粽小點",
+        // ↓↓↓ 這裡開始編輯 4 月的文章 ↓↓↓
+        article: `這兩天記憶有點忘記了 不過我猜有可能是去你家打電腦，
+        我們還有雙影幻境還沒有玩玩，需要找一天玩玩!!!!!!!!!!!`, 
+        photos: [
+          { url: "https://i.ibb.co/G4Sfrrzc/IMG-6253.jpg", date: "0401", message: "只有這個肉粽+味噌湯湯照片" },
+        ]
+      },
+      {
+        id: "trip-0405",
+        dateRange: "04月05日",
+        title: "4月應該跟4/1是同一次",
+        description: "吃吃了你家附近的好吃牛肉湯",
+        // ↓↓↓ 這裡開始編輯 4 月連假的文章 ↓↓↓
+        article: `看這個照片應該確定就是去你家打遊戲的日，嘻嘻
+        還有很飽的時候吃了很好吃的牛肉湯和飯飯 喜歡`,
+        photos: [
+          { url: "https://i.ibb.co/MDLwNYYK/IMG-6255.jpg", date: "0405", message: "什麼媽媽的波羅由 普" },
+          { url: "https://i.ibb.co/XkDbNZww/IMG-6261.jpg", date: "0405", message: "你喜歡的我跟滷肉飯跟牛肉湯湯" },
+        ]
+      },
+      {
+        id: "trip-0419",
+        dateRange: "04月19日",
+        title: "4月六福村+密逃日!",
+        description: "兩天都是超級超級超級喜歡的行程，第一次一起去遊樂園",
+        // ↓↓↓ 這裡開始編輯文章 ↓↓↓
+        article: `第一次一起去遊樂園，我帶你去玩笑奧飛鷹，因為你以前不敢玩
+        但是現在你已經很勇敢了，敢玩大怒神了 棒
+        好喜歡我們去六福村玩很多東東，雲霄飛車還完了兩三次，人家都快關閉了
+        
+        還有坐火車看動物的也很酷，一整天都在玩
+        
+        隔天去了密室逃脫，因為你是第一次玩，所以我也會負責解謎
+        你負責執行，我們兩個人比我們公司一群人去還要聰明，我們都是最強大腦!!!
+        而且這個是臨時找的密室逃脫 就可以這麼好玩，台中真的是密室逃脫大本營`,
+        photos: [
+          { url: "https://i.ibb.co/HTQdjF8b/IMG-6448.jpg", date: "0419", message: "最強大腦4我!!!!!!!!!!!!!" },
+          { url: "https://i.ibb.co/pBHZxLwd/IMG-6435.jpg", date: "0419", message: "第一次吃織田信長，你查到的!!!超級好吃的炸牡蠣" },
+          { url: "https://i.ibb.co/q3h4dwzb/IMG-6425.jpg", date: "0419", message: "合照乙張" },
+          { url: "https://i.ibb.co/TxzNWV57/IMG-6460.jpg", date: "0419", message: "六福村酷妹照一張" },
+          { url: "https://i.ibb.co/VWCmqWf2/IMG-6426.jpg", date: "0419", message: "玩水的，我們兩個搭了一台結果全身溼答答，後來花一百塊去烘乾(可是根本沒乾)" },
+        ]
+      },
+      {
+        id: "trip-0502",
+        dateRange: "05月02日 - 05月03日",
+        title: "5月臨時說要去墾丁喔!!!",
+        description: "臨時說要去墾丁 民宿老闆人很好很多貓咪",
+        // ↓↓↓ 這裡開始編輯文章 ↓↓↓
+        article: `墾丁好好玩，我們還在床上抽空氣菸 很搞笑
+        還有去海深館拍很多照片、還有看企鵝跟很多花園鰻還有水母(好地方)
+        
+        隔天潛水玩趕著回來，你說要吃波波波，所以我們找到了一間豆腐鍋的店 也是好吃
+        
+        只是那天我真的太累了，在車上瘋狂呼呼大睡
+        喔對了，那間潛店nono，第二潛完全不知道在搞什麼鬼(抽空氣菸 呼~`,
+        photos: [
+          { url: "https://i.ibb.co/G4CP30zK/IMG-6614.jpg", date: "0502", message: "別人幫我們合照乙張" },
+          { url: "https://i.ibb.co/VWrjrwK5/IMG-6624.jpg", date: "0502", message: "呆呆醜醜魚" },
+          { url: "https://i.ibb.co/xKDsLwrM/IMG-6602.jpg", date: "0502", message: "墾丁的路上喔" },
+          { url: "https://i.ibb.co/SX5NX9t8/IMG-6643.jpg", date: "0503", message: "你指定的波波波套餐" },
+        ]
+      },
+      {
+        id: "trip-0527",
+        dateRange: "05月27日 - 05月31日",
+        title: "5月第一次的立本!!",
+        description: "你的第一次去立本玩 好玩，吃了很多好吃的東西還有走了很多的路",
+        // ↓↓↓ 這裡開始編輯文章 ↓↓↓
+        article: `第一次去日本很緊張沒關係，因為我會保護你
+        喜歡跟你一起去日本玩，我們會一起跑跑到景點，也謝謝你找到早餐這麼好吃的飯店，
+        到現在還是很喜歡早餐的咖哩飯，日本的咖哩飯第一名
+        
+        還有去shibuya sky也是你統一!!那天有點感冒，之後身體不舒服你也幫幫我很多，還好回來台灣才正式超級不舒服 嘻嘻
+
+        還有你第一次吃油總就著魔，成為新一代的皮皮麵，還有你去喝了好多次的好喝奶茶
+
+        去看了美女表演、吃很硬的和牛，下次我要去日本削恥，我一定要吃到好吃的和牛燒肉
+        `,
+        photos: [
+          { url: "https://i.ibb.co/hFYRrH6Q/IMG-6931.jpg", date: "0527", message: "一起搭飛機腳腳合照乙張" },
+          { url: "https://i.ibb.co/QF39sGZq/IMG-6935.jpg", date: "0527", message: "喔喔喔 騎這個車車很好玩 只是只敢半夜騎" },
+          { url: "https://i.ibb.co/tPzttpWx/IMG-6933.jpg", date: "0527", message: "拉麵!下飛機第一餐排隊拉麵" },
+          { url: "https://i.ibb.co/1tTTQFqx/IMG-6937.jpg", date: "0528", message: "好吃早餐咖哩飯" },
+          { url: "https://i.ibb.co/4RRZvzsT/IMG-7019.jpg", date: "0528", message: "油總 讓你瘋狂著迷的油總，新日朋很會介紹好吃的東東" },
+          { url: "https://i.ibb.co/gZ45QVDX/IMG-6945.jpg", date: "0528", message: "在明治神宮的獨照一張，你還說這裡的水甜甜的好喝" },
+          { url: "https://i.ibb.co/nsgDW5S6/IMG-6940.jpg", date: "0528", message: "很多酒桶" },
+          { url: "https://i.ibb.co/tPz2z8Xk/IMG-7015.jpg", date: "0528", message: "澀谷天空，上面超級冷，我還超皮不穿外套再叫你去幫我拿，沒等到夕陽，雲太多了" },
+          { url: "https://i.ibb.co/ymVBsJpk/IMG-7033.jpg", date: "0528", message: "也是新日朋推薦的好喝奶茶店" },
+          { url: "https://i.ibb.co/hRFFkh1K/IMG-7064.jpg", date: "0529", message: "一起買一樣的黃色皮皮克敏" },
+          { url: "https://i.ibb.co/m5q45dqD/IMG-7070.jpg", date: "0529", message: "去看漂亮美眉表演，我看你牙齒都收不起來" },
+          { url: "https://i.ibb.co/Q3LbCV7s/IMG-7058.jpg", date: "0529", message: "合照乙張" },
+          { url: "https://i.ibb.co/Q3PwZyWf/IMG-7094.jpg", date: "0529", message: "史上最貴最多產物的肉肉 嘻嘻" },
+          { url: "https://i.ibb.co/Sh7tPwG/IMG-7098.jpg", date: "0529", message: "好吃的炸牛排 不過吃到後面有點油，排隊排了很久，我還去星巴克買了抹茶" },
+          { url: "https://i.ibb.co/xtxS5HQG/IMG-7101.jpg", date: "0530", message: "合照乙張(請台灣人拍的哈哈哈)" },
+          { url: "https://i.ibb.co/sdW5z9jp/IMG-7160.jpg", date: "0531", message: "我要先回台灣了嗚嗚 你繼續玩了好幾天，又多吃了幾次油總和奶茶" },
+        ]
+      },
+      {
+        id: "trip-0615",
+        dateRange: "06月15日",
+        title: "6月高雄比歐日!",
+        description: "目前榮登高雄最喜歡的飯店喔",
+        // ↓↓↓ 這裡開始編輯文章 ↓↓↓
+        article: `去高雄比歐吃了好吃的早餐、還有下午茶跟晚餐，比歐送的香水我現在都放在車上，車子臭臭的時候就可以噴，很好用
+        
+        還有去旗津，很熱超級熱，路上有經過風箏我就跑下車去看，那邊就是一兩個人把一堆風箏綁在一起放，我以為有超多活動在那邊
+        
+        總之，還是喜歡比歐喔 也謝謝你用點數，原本的住宿券根本忘記帶`,
+        photos: [
+          { url: "https://i.ibb.co/FLkNx9CT/IMG-7456.jpg", date: "0615", message: "旗津公園的風箏" },
+          { url: "https://i.ibb.co/L7pgf6h/IMG-7459.jpg", date: "0615", message: "要配眼鏡了啦!!你說一月要配，看你看到這個文字的時候配了沒" },
+          { url: "https://i.ibb.co/n9B1wms/IMG-7451.jpg", date: "0615", message: "超級無敵豐盛的早餐，要再去吃一次!!!" },
+        ]
+      },
+      {
+        id: "trip-0711",
+        dateRange: "07月11日",
+        title: "7月看來又是高雄日",
+        description: "吃到超級好吃的漢堡店喔",
+        // ↓↓↓ 這裡開始編輯文章 ↓↓↓
+        article: `吃了好吃的漢堡，後來又有再去吃一次，喜歡，尤其是他細細又很有味道的薯條，
+        
+        住在海邊，我們還很熱的走去圖書館和酒吧喝了一些酒，走在路上的感覺真的很舒服，只是這個時候真的實在是太熱了啦啦啦`,
+        photos: [
+          { url: "https://i.ibb.co/HLLzVBWt/IMG-7906.jpg", date: "0711", message: "吃了兩次的漢堡店" },
+          { url: "https://i.ibb.co/HTftvdGZ/IMG-7900.jpg", date: "0711", message: "也是吃了兩次的好吃松露野菇燉飯" },
+          { url: "https://i.ibb.co/tMMy0cgv/IMG-7911.jpg", date: "0711", message: "合照乙張" },
+        ]
+      },
+      {
+        id: "trip-0719",
+        dateRange: "07月19日",
+        title: "7月應該是來我家玩喔",
+        description: "台中 我猜是來我們家，然後我們就很餓很餓在拉拉破看要吃什麼，最後吃了咖哩飯",
+        // ↓↓↓ 這裡開始編輯文章 ↓↓↓
+        article: ``,
+        photos: [
+          { url: "https://i.ibb.co/Kx4mgKjz/IMG-7954.jpg", date: "0719", message: "走了很久終於有一個不用排隊的咖哩飯" },
+          { url: "https://i.ibb.co/p6zGtd6D/IMG-7953.jpg", date: "0719", message: "合照乙張" },
+        ]
+      },
+      {
+        id: "trip-0830",
+        dateRange: "08月30日 - 08月31日",
+        title: "8月我生日ㄉ港迪!",
+        description: "又一次生日去香港，不過我們這次的主要目標是港迪!",
+        // ↓↓↓ 這裡開始編輯文章 ↓↓↓
+        article: `,謝謝你帶我去香港吃吃喝喝還有港迪，
+        
+        喜歡你送的項鍊還有很用心很用心的卡片，謝謝你每次都很用心的作卡片還有晚上也都會寫小語給我，喜歡你寫想跟我說的話，我都有看喔!!
+        
+        這次的香港也吃到了很多好吃的東西，不論是我們飯店對面的那個飲茶還是我杯茶的叉燒飯都超級好吃，不過迪士尼完的那餐真的太類累到眼睛沒辦法對焦，也沒辦法好好跟你說話了
+        
+        還有謝謝你都會幫我拍很多美美的照片，我雖然是E人，但在很多人前面拍照我也會害羞啊哈哈哈哈哈`,
+        photos: [
+          { url: "https://i.ibb.co/5hjtj1Mr/IMG-8751.jpg", date: "0830", message: "港迪完的第一餐，又餓又累，還好前一天有先在超市買了一些食材" },
+          { url: "https://i.ibb.co/FLwrpHj4/IMG-8739.jpg", date: "0830", message: "二訪的阿姨雲吞湯，他的麵是細細的麵 你喜歡的" },
+          { url: "https://i.ibb.co/jkDSQmKb/IMG-8734.jpg", date: "0830", message: "搭飛機睡到嘴開開，你也超級會流口水" },
+          { url: "https://i.ibb.co/G4JpPd0Z/IMG-8770.jpg", date: "0831", message: "生日港迪合照乙張" },
+          { url: "https://i.ibb.co/LDpzt2rZ/IMG-8831.jpg", date: "0831", message: "喜歡這張你幫我拍的照片，我還把這張照片存愛心<3" },
+          { url: "https://i.ibb.co/m5J993YS/IMG-8778.jpg", date: "0831", message: "YOOOOOOOOO 我們的港迪有買快速通關喔喔喔喔喔" },
+          { url: "https://i.ibb.co/Ndyg7Js1/IMG-8759.jpg", date: "0831", message: "合照乙張，我們這次住的是你統一的五星級飯店喔，下面還有商場超級方便" },
+        ]
+      },
+      {
+        id: "trip-1003",
+        dateRange: "10月03日 - 10月06日",
+        title: "10月蘭嶼的蘭!",
+        description: "在夏天的尾巴去了蘭嶼，東西好貴，可是蘭嶼真的好美",
+        // ↓↓↓ 這裡開始編輯文章 ↓↓↓
+        article: `這次蘭嶼真的好喜歡，上一次去蘭嶼是五年了，你第一次來
+        
+        蘭嶼的海、蘭嶼的天空都好漂亮，而且我們買了兩次的飛魚卵炒飯也超級好吃，下次我們要夏天飛魚季的時候來，吃他們最有名的飛魚料理
+        
+        潛水遇到很chill的吉米，希望下次可以再跟他一起潛水，也喜歡跟你一起潛水`,
+        photos: [
+          { url: "https://i.ibb.co/CGTH8GL/IMG-9186.jpg", date: "1003", message: "應該是第一天吃的東東 好吃" },
+          { url: "https://i.ibb.co/WvLWFS8s/IMG-3062.jpg", date: "1003", message: "每天都要追夕陽，謝謝你帶我去追夕陽，我也喜歡追夕陽的路上夕陽把天空染成橘紅色，真的好美，下次去一定要去草原看超級漂亮的夕陽!" },
+          { url: "https://i.ibb.co/5hZLw1NK/IMG-3074.jpg", date: "1004", message: "蘭嶼的藍!!!" },
+          { url: "https://i.ibb.co/j9rD37Lm/IMG-9204.jpg", date: "1004", message: "我們自己買回來的晚餐 有一天還遇到她們當地辦超大的婚禮 好難得" },
+          { url: "https://i.ibb.co/CK45k07g/IMG-9209.jpg", date: "1005", message: "非魚卵卦包 好吃 肉鬆也很好吃" },
+          { url: "https://i.ibb.co/DHRM8VFJ/IMG-9214.jpg", date: "1005", message: "你被鰻魚吃掉啦~~~~" },
+          { url: "https://i.ibb.co/MDQrRKHm/IMG-9208.jpg", date: "1005", message: "好吃的頂中頂炒飯(只是很貴)" },
+          { url: "https://i.ibb.co/6cRStFjV/IMG-9263.jpg", date: "1006", message: "從後壁湖回來帶你去吃點太多的虎吹蹈" },
+          { url: "https://i.ibb.co/BKKvWgQ4/ccdr-2025-10-06-094301-644.jpg", date: "1006", message: "回程的海浪透過船的窗戶也好漂亮" },
+        ]
+      },
+      {
+        id: "trip-1025",
+        dateRange: "10月25日",
+        title: "10月流感酒精路跑",
+        description: "我才剛去熊本喝完，連喝六天",
+        // ↓↓↓ 這裡開始編輯文章 ↓↓↓
+        article: `我們第一次去酒精路跑，我覺得很好玩，也很開心有喜德的男朋可以一間一間帶我們去喝，下此有再一起去參加，我們喝超級多，而且我還得流感，好險酒精消毒有用!!!!`,
+        photos: [
+          { url: "https://i.ibb.co/VYZtZQvz/IMG-9575.jpg", date: "1025", message: "我們喝超多的啦 但還是喝不完全部" },
+          { url: "https://i.ibb.co/YBfcbdM4/IMG-9572.jpg", date: "1025", message: "跟大家的合照乙張" },
+        ]
+      },
+      {
+        id: "trip-1120",
+        dateRange: "11月20日",
+        title: "11月終於去洗底片相機了",
+        description: "我終於去洗底片相機了啦哈哈哈",
+        // ↓↓↓ 這裡開始編輯文章 ↓↓↓
+        article: `底片相機應該要標日期，不然放了兩三年洗出來都不知道是什麼時候了啦，不過也很喜歡底片相機洗出來的樣子，我們去日本也買了好幾個`,
+        photos: [
+          { url: "https://i.ibb.co/1GZZhJZt/IMG-0278.jpg", date: "1120", message: "合照乙張" },
+          { url: "https://i.ibb.co/BVddB7G7/IMG-0233.jpg", date: "1120", message: "合照丙張" },
+          { url: "https://i.ibb.co/Q3dqn7pk/IMG-0227.jpg", date: "1120", message: "獨照丁張" },
+        ]
+      },
+      {
+        id: "trip-1206",
+        dateRange: "12月06日",
+        title: "12月逢甲泡湯日",
+        description: "謝謝你找了很棒很棒的湯屋",
+        // ↓↓↓ 這裡開始編輯文章 ↓↓↓
+        article: `天氣已經開始慢慢變冷了，喜歡冬天瘋狂泡湯，這樣就很舒服，泡湯完也要吃泡麵 耶
+        
+        我們泡完湯還去那個免費的泡腳池，那邊也好舒服喔，晚上又吃了一次織田信長，炸牡蠣我們下次要吃飽再點`,
+        photos: [
+          { url: "https://i.ibb.co/6cd5GV0v/IMG-0566.jpg", date: "1206", message: "合照乙張，在等餐送來" },
+          { url: "https://i.ibb.co/b9b4tqm/IMG-0565.jpg", date: "1206", message: "湯屋 還有冰水池的，下次可以再去另外類型的房型 戶外泡湯也超級喜歡" },
+          { url: "https://i.ibb.co/mVRZ0fjS/IMG-0570.jpg", date: "1206", message: "好吃的明太子大餐" },
+          { url: "https://i.ibb.co/TsYJT3K/IMG-0568.jpg", date: "1206", message: "實在是太頂了的炸牡蠣，下次吃飽來專程吃炸牡蠣" },
+        ]
+      },
+      {
+        id: "trip-1213",
+        dateRange: "12月13日",
+        title: "12月屁眼婚禮日",
+        description: "參加了你的同事的婚禮，給你當一天E人",
+        // ↓↓↓ 這裡開始編輯文章 ↓↓↓
+        article: `感覺你們同事之間的感情真的很好，果然是一群男孩子聚集會有的歡樂，雖然菜色不是我喜歡的，不過可以跟你一起來參加別人的婚禮我也很開心喔喔喔喔
+        
+        後面也有摸到超級好動的大狗狗，看得出來泰瑞哥也有在用心照顧他的狗狗`,
+        photos: [
+          { url: "https://i.ibb.co/C5cwvH1f/IMG-0646.jpg", date: "1213", message: "婚禮外面的電視合照乙張" },
+        ]
+      },
+      {
+        id: "trip-0101",
+        dateRange: "2026年跨年",
+        title: "跨年泡湯鞋嘞",
+        description: "啊鞋嘞?",
+        // ↓↓↓ 這裡開始編輯文章 ↓↓↓
+        article: `跨年那天你來我家，想了很久還是決定待在家裡
+        
+        隔天我們睡了很晚，一整天都在家裡很舒服，就我們兩個。
+        禮拜五我去上班回來一起去吃了喜歡的麵麵，下午就去泡湯，結果...鞋嘞?
+        泡湯真的好舒服，喜歡跟你一起去泡湯，我們還要再去更多地方
+
+        還有一起煮了馬鈴薯餐，我的有點失敗，不過你煮的很好吃喔喔喔!
+        期待你下次再來我家玩!!!!
+        `,
+        photos: [
+          { url: "https://i.ibb.co/V02NrB7R/0106-IMG-0923.jpg", date: "0101", message: "去吃素食，你的石鍋拌飯好吃" },
+          { url: "https://i.ibb.co/mCdPdSgX/0106-IMG-0937.jpg", date: "0101", message: "最後一天跟我們家去吃的簡餐 普普" },
+          { url: "https://i.ibb.co/m52vZHCL/0106-IMG-0903.jpg", date: "0101", message: "跨年義大利麵餐!" },
+          { url: "https://i.ibb.co/m5HB95Sf/0106-IMG-0904.jpg", date: "0101", message: "2026年也要有你在" },
+          { url: "https://i.ibb.co/TNDQ1kC/0106-IMG-0918.jpg", date: "0101", message: "東海回憶麵麵" },
+          { url: "https://i.ibb.co/C3WYSp9d/0106-IMG-0920.jpg", date: "0101", message: "高級的泡湯!!第一次滑滑的 鞋嘞" },
+          { url: "https://i.ibb.co/hxzQkH75/0106-IMG-0932.jpg", date: "0101", message: "下次也要再挑戰煮飯大賽!" },
+
+    ]
+  },
+];
+
+
+    // --- 底部的長信內容 (首頁用) ---
+    const LONG_LETTER = `
+恩哥
+
+生日快樂喔喔喔喔喔喔喔~~
+今年又去了超級多的地方，
+謝謝你總是陪陪我去做我想做的事，
+還有聽我瘋狂分享，
+雖然今年也是有一些吵架，
+不過從年初的大吵之後，
+我發現我們慢慢的比較不會吵架了，
+也謝謝你每次在我念東念西的時候有聽進去、沒有不耐煩><
+在你生日的這天我們已經在一起了1324天ㄌ
+超級多!!以後還會越來越多天
+
+已經連續好幾年都畫畫了，
+上次我生日你弄了一個超酷的盒子卡片
+我覺得我不能再無聊的畫畫了
+ (加上我真的很久沒畫畫了哈哈哈哈哈哈)
+所以這次決定借用一下小祕書，
+幫我做了這個小小網頁，
+我有一天不是說我在整理照片嗎?
+(晚上的時候)
+其實我是在整理這些照片啦哈哈哈
+
+希望你會喜歡，下次想要弄個更酷的，
+敬請期待!
+我現在已經是工程師了!!!
+工!!程!!!師!!!!
+也希望這個電子卡片可以
+在你無聊的時候就可以看看，
+嘻嘻
+我要整點的時候寄到你的信箱
+
+愛你ㄛ
+山地<3
+2026-01-17
+
+
+`;
+
+    // --- 主程式區域 (包含邏輯與樣式) ---
+
+    function BirthdayApp() {
+      const [mounted, setMounted] = useState(false);
+      const [currentView, setCurrentView] = useState('home'); // 'home' or 'album'
+      const [selectedAlbumId, setSelectedAlbumId] = useState(null);
+      
+      // 用於控制橫向捲軸的 Ref
+      const scrollContainerRef = useRef(null);
+
+      useEffect(() => {
+        setMounted(true);
+      }, []);
+
+      const openAlbum = (albumId) => {
+        setSelectedAlbumId(albumId);
+        setCurrentView('album');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+
+      const goHome = () => {
+        setCurrentView('home');
+        setSelectedAlbumId(null);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+
+      // 捲動功能
+      const scroll = (direction) => {
+        if (scrollContainerRef.current) {
+          const scrollAmount = 250; // 每次移動的距離
+          const container = scrollContainerRef.current;
+          if (direction === 'left') {
+            container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+          } else {
+            container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+          }
+        }
+      };
+
+      const currentAlbumData = ALBUMS.find(a => a.id === selectedAlbumId);
+
+      return (
+        // 修改：將背景改為 bg-sky-100 (淺藍天色)
+        <div className="min-h-screen bg-sky-100 flex justify-center items-start py-0 md:py-8 font-sans selection:bg-sky-200">
+          {/* 限制最大寬度為 430px (常見手機寬度)，並添加陰影和圓角模擬手機 */}
+          {/* 修改：內部背景改為 bg-sky-50 (更淡的藍)，邊框陰影維持 */}
+          <div className="w-full max-w-[430px] bg-sky-50 min-h-screen md:min-h-[850px] md:h-auto md:rounded-[3rem] shadow-2xl relative overflow-hidden flex flex-col border-[8px] border-white md:border-slate-800 box-border">
+            
+            {/* 手機頂部裝飾 (僅在模擬框模式下顯示) */}
+            <div className="hidden md:block absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-slate-800 rounded-b-2xl z-50"></div>
+
+            {/* 飄落愛心背景 - 修改：顏色改為 text-sky-200 (淺藍色愛心/泡泡感) */}
+            {mounted && (
+              <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
+                {[...Array(15)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="floating-heart text-sky-200"
+                    style={{
+                      left: `${Math.random() * 100}%`,
+                      animationDelay: `${Math.random() * 10}s`,
+                      fontSize: `${Math.random() * 20 + 20}px`,
+                      animationDuration: `${Math.random() * 10 + 10}s`
+                    }}
+                  >
+                    ❤
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="relative z-10 w-full flex-1 flex flex-col h-full overflow-hidden">
+              
+              {/* Header 區域：在首頁顯示大標題 */}
+              {currentView === 'home' && (
+                <header className="text-center pt-12 pb-6 px-6 animate-fade-in-up">
+                  {/* 修改：Icon 背景與顏色改為藍色系 */}
+                  <div className="inline-block p-3 rounded-full bg-sky-100 text-sky-950 mb-3 shadow-sm border border-sky-200">
+                    <Gift size={28} />
+                  </div>
+                  {/* 修改：文字改為深藍偏黑 text-sky-950 */}
+                  <h1 className="text-3xl font-bold text-sky-950 mb-2 tracking-tight">
+                    {TITLE_MESSAGE}
+                  </h1>
+                  {/* 修改：文字改為深藍 text-sky-900 */}
+                  <p className="text-lg text-sky-900 font-light">
+                    To {BOYFRIEND_NAME}
+                  </p>
+                  {/* 修改：裝飾文字顏色改為 text-sky-500 */}
+                  <div className="mt-4 flex justify-center items-center gap-2 text-sky-500 text-xs animate-pulse">
+                    <Sparkles size={14} />
+                    <span className="text-center">點擊資料夾查看我們的回憶<br/>要等照片跑一下QQ</span>
+                    <Sparkles size={14} />
+                  </div>
+                </header>
+              )}
+
+              {/* 頁面內容切換 */}
+              {currentView === 'home' ? (
+                // --- 首頁：資料夾列表 ---
+                <div className="w-full flex-1 overflow-y-auto no-scrollbar px-5 pb-20">
+                  {/* 強制兩欄排版 */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {ALBUMS.map((album) => (
+                      <div 
+                        key={album.id}
+                        onClick={() => openAlbum(album.id)}
+                        // 修改：邊框顏色改為 border-sky-100
+                        className="folder-card bg-white rounded-xl shadow-md cursor-pointer overflow-hidden group transition-all duration-300 border border-sky-100 flex flex-col h-full"
+                      >
+                        {/* 資料夾封面 */}
+                        <div className="h-32 overflow-hidden relative bg-slate-100">
+                          <img 
+                            src={album.photos[0]?.url} 
+                            alt={album.title} 
+                            className="w-full h-full object-cover transition-transform duration-700"
+                          />
+                          {/* 修改：標籤顏色改為深藍色字體 */}
+                          <div className="absolute top-2 left-2 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded-full text-[10px] font-bold text-sky-900 shadow-sm flex items-center gap-1">
+                            <FolderHeart size={10} />
+                            {album.photos.length}
+                          </div>
+                        </div>
+                        
+                        {/* 資料夾資訊 */}
+                        <div className="p-3 flex-1 flex flex-col">
+                          {/* 修改：日期顏色改為 text-sky-500 */}
+                          <div className="text-[10px] font-bold text-sky-500 mb-1 uppercase tracking-wider">
+                            {album.dateRange}
+                          </div>
+                          {/* 修改：標題顏色改為 text-sky-950 */}
+                          <h3 className="text-sm font-bold text-sky-950 mb-1 line-clamp-1">
+                            {album.title}
+                          </h3>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 首頁底部的長信 */}
+                  <div className="mt-8 mb-4 flex justify-center">
+                    {/* 修改：信件框框線改為 border-sky-200 */}
+                    <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-lg w-full border border-sky-200 relative overflow-hidden">
+                      {/* 修改：頂部漸層條改為藍色系 */}
+                      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-sky-200 via-sky-400 to-sky-200" />
+                      <div className="flex justify-center mb-4 text-sky-400">
+                        <Heart size={30} fill="currentColor" className="animate-bounce" />
+                      </div>
+                      <div className="prose prose-sky max-w-none">
+                        {/* 修改：內文改為 text-slate-800 深色 */}
+                        <p className="whitespace-pre-line text-sm leading-relaxed text-slate-800 font-medium text-center">
+                          {LONG_LETTER}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                // --- 內頁：相簿詳情 ---
+                // 修改：讓內頁本身可以垂直捲動，以便放入更多內容
+                <div className="w-full h-full flex flex-col animate-fade-in relative">
+                  
+                  {/* 導航列 (固定在頂部) - 修改：背景改為 bg-sky-50/95 */}
+                  <div className="pt-8 pb-4 px-5 flex items-center gap-4 bg-sky-50/95 backdrop-blur-sm z-20 sticky top-0 border-b border-sky-100/50">
+                    <button 
+                      onClick={goHome}
+                      // 修改：按鈕顏色改為深藍 text-sky-950
+                      className="bg-white p-2 rounded-full text-sky-950 shadow-sm hover:bg-sky-50 transition-colors border border-sky-100"
+                    >
+                      <ArrowLeft size={20} />
+                    </button>
+                    <div className="flex-1 min-w-0">
+                       {/* 修改：標題顏色改為 text-sky-950 */}
+                       <h2 className="text-lg font-bold text-sky-950 truncate">
+                        {currentAlbumData?.title}
+                      </h2>
+                      {/* 修改：日期顏色改為 text-sky-600 */}
+                      <p className="text-xs text-sky-600 truncate">
+                        {currentAlbumData?.dateRange}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 可捲動的內容區域 */}
+                  <div className="flex-1 overflow-y-auto no-scrollbar pb-20">
+                    
+                    {/* 簡介 */}
+                    <div className="px-6 mb-6 mt-4">
+                      {/* 修改：簡介顏色改為 text-slate-800 */}
+                      <p className="text-slate-800 text-sm leading-relaxed">
+                        {currentAlbumData?.description}
+                      </p>
+                    </div>
+
+                    {/* 橫向滑動照片區 (Horizontal Scroll) */}
+                    <div className="relative w-full mb-8">
+                      {/* 左邊箭頭 */}
+                      <button 
+                        onClick={() => scroll('left')}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 z-30 bg-white/80 backdrop-blur-md p-2 rounded-full shadow-lg text-sky-950 hover:bg-white hover:scale-110 transition-all border border-sky-200"
+                      >
+                        <ChevronLeft size={24} />
+                      </button>
+
+                      {/* 右邊箭頭 */}
+                      <button 
+                        onClick={() => scroll('right')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 z-30 bg-white/80 backdrop-blur-md p-2 rounded-full shadow-lg text-sky-950 hover:bg-white hover:scale-110 transition-all border border-sky-200"
+                      >
+                        <ChevronRight size={24} />
+                      </button>
+
+                      {/* 滑動容器 - 設定固定高度讓照片顯示 */}
+                      <div 
+                        ref={scrollContainerRef}
+                        className="w-full h-[360px] overflow-x-auto no-scrollbar snap-x snap-mandatory flex gap-4 px-6 items-center"
+                      >
+                        {currentAlbumData?.photos.map((photo, index) => (
+                          <div key={index} className="min-w-[70%] h-full snap-center flex-shrink-0 flex items-center justify-center">
+                            <FlipCard photo={photo} />
+                          </div>
+                        ))}
+                        
+                        {/* 結尾留白 */}
+                        <div className="min-w-[10px] h-full flex-shrink-0" />
+                      </div>
+                    </div>
+
+                    {/* --- 新增：底部文章區域 --- */}
+                    <div className="px-6 mb-8">
+                      <div className="bg-white/60 backdrop-blur-sm p-5 rounded-xl shadow-sm border border-sky-100 relative">
+                         <div className="flex items-center gap-2 mb-3 border-b border-sky-100 pb-2">
+                            <PenTool size={16} className="text-sky-400" />
+                            <h3 className="text-sky-900 font-bold text-sm">
+                               旅程筆記
+                            </h3>
+                         </div>
+                         <div className="prose prose-sm prose-sky max-w-none">
+                            <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-line font-medium">
+                               {/* 如果有填寫 article 就顯示，沒有則顯示提示 */}
+                               {currentAlbumData?.article || "這裡可以寫下關於這趟旅行更詳細的故事或是心裡話"}
+                            </p>
+                         </div>
+                         {/* 裝飾 */}
+                         <div className="absolute -bottom-2 -right-2 text-sky-100 transform rotate-12">
+                            <Heart size={40} fill="currentColor" />
+                         </div>
+                      </div>
+                    </div>
+
+                  </div>
+                  
+                  {/* Footer - 修改：顏色與背景配合藍色主題 */}
+                  <footer className="py-4 text-sky-400 text-[10px] flex justify-center items-center gap-1 bg-sky-50 absolute bottom-0 w-full z-10 border-t border-sky-100">
+                    <span>Made with</span>
+                    <Heart size={10} fill="currentColor" />
+                    <span>for You</span>
+                  </footer>
+
+                </div>
+              )}
+
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // 翻轉卡片組件
+    function FlipCard({ photo }) {
+      const [isFlipped, setIsFlipped] = useState(false);
+
+      return (
+        <div 
+          className="h-full w-full cursor-pointer perspective-1000 group"
+          onClick={() => setIsFlipped(!isFlipped)}
+        >
+          <div className={`relative w-full h-full duration-500 transform-style-3d transition-transform ${isFlipped ? 'rotate-y-180' : ''}`}>
+            
+            {/* 正面：照片 */}
+            {/* 修改：背景改為 bg-sky-50，邊框 border-white */}
+            <div className="absolute w-full h-full backface-hidden rounded-2xl overflow-hidden shadow-md border-[3px] border-white bg-sky-50 transition-shadow flex items-center justify-center">
+              <img 
+                src={photo.url} 
+                alt="Memory" 
+                className="w-full h-full object-contain"
+              />
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
+                <div className="text-white text-xs font-medium flex items-center gap-1">
+                  <Camera size={12} />
+                  {photo.date}
+                </div>
+              </div>
+            </div>
+
+            {/* 背面：文字 */}
+            {/* 修改：邊框改為 border-sky-200 */}
+            <div className="absolute w-full h-full backface-hidden rotate-y-180 rounded-2xl overflow-hidden shadow-md bg-white p-4 flex flex-col items-center justify-center text-center border-[3px] border-sky-200">
+              {/* 修改：背面愛心改為淺藍色 text-sky-200 */}
+              <div className="absolute top-2 right-2 text-sky-200">
+                <Heart size={16} />
+              </div>
+              
+              {/* 修改：標題改為深藍色 text-sky-900 */}
+              <h3 className="text-sky-900 font-bold mb-2 text-sm font-serif">
+                 關於這天 
+              </h3>
+              {/* 修改：內文改為 text-slate-800，捲軸改為 scrollbar-thumb-sky-200 */}
+              <p className="text-slate-800 text-xs leading-relaxed overflow-y-auto flex-1 w-full px-1 scrollbar-thin scrollbar-thumb-sky-200 flex items-center justify-center">
+                {photo.message}
+              </p>
+              
+              {/* 修改：底部提示文字改為 text-sky-400，線條 border-sky-50 */}
+              <div className="mt-2 text-[10px] text-sky-400 w-full pt-2 border-t border-sky-50">
+                (點擊翻回)
+              </div>
+            </div>
+
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<BirthdayApp />);
+  </script>
+</body>
+</html>
