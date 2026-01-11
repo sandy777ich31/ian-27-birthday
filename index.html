@@ -39,6 +39,22 @@
     
     /* 確保輸入框樣式 */
     .prose { max-width: 65ch; }
+
+    /* 載入動畫 */
+    .loader {
+      border: 3px solid #f3f3f3;
+      border-radius: 50%;
+      border-top: 3px solid #38bdf8; /* sky-400 */
+      width: 24px;
+      height: 24px;
+      -webkit-animation: spin 1s linear infinite; /* Safari */
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body class="bg-sky-100">
@@ -47,7 +63,7 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
-    // --- 圖示組件 (因為不用安裝套件，這裡手動定義圖示) ---
+    // --- 圖示組件 ---
     const Icon = ({ children, size = 24, className = "" }) => (
       <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{children}</svg>
     );
@@ -56,7 +72,7 @@
     const Camera = (props) => <Icon {...props}><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" /><circle cx="12" cy="13" r="3" /></Icon>;
     const ArrowLeft = (props) => <Icon {...props}><path d="m12 19-7-7 7-7" /><path d="M19 12H5" /></Icon>;
     const FolderHeart = (props) => <Icon {...props}><path d="M11 20H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H20a2 2 0 0 1 2 2v2" /><path d="M19 22c1.7-1.7 3.3-2.3 3.3-4.3 0-1.3-1-2.2-2.3-2.2-1 0-1.6.6-2 1.4-.4-.8-1-1.4-2-1.4-1.3 0-2.3.9-2.3 2.2 0 2 1.6 2.6 3.3 4.3Z" /></Icon>;
-    const Sparkles = (props) => <Icon {...props}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" /><path d="M5 3v4" /><path d="M9 5H3" /><path d="M5 3v4" /><path d="M9 5H3" /></Icon>; // Simplified sparkles
+    const Sparkles = (props) => <Icon {...props}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" /><path d="M5 3v4" /><path d="M9 5H3" /><path d="M5 3v4" /><path d="M9 5H3" /></Icon>; 
     const ChevronLeft = (props) => <Icon {...props}><path d="m15 18-6-6 6-6" /></Icon>;
     const ChevronRight = (props) => <Icon {...props}><path d="m9 18 6-6-6-6" /></Icon>;
     const PenTool = (props) => <Icon {...props}><path d="m12 19 7-7 3 3-7 7-3-3z" /><path d="m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" /><path d="m2 2 7.586 7.586" /><circle cx="11" cy="11" r="2" /></Icon>;
@@ -74,7 +90,6 @@
         dateRange: "01月04日",
         title: "1月熟悉的北",
         description: "沒放到其他張",
-        // 這裡可以寫文章
         article: `這次的熟悉的北去到進擊的巨人的展、還有看巨人的電影、還有吃北七底家
         
         有吵架 我很生氣 可是也忘記在氣什麼了ㄏㄏ
@@ -89,7 +104,6 @@
         dateRange: "03月22日 - 03月23日",
         title: "3月嘉義二月山家",
         description: "窩在房間玩switch",
-        // 這裡可以寫文章
         article: `早上先去喝存很久的杏仁茶
         可是沒到特別好喝
         還有去爬山逛老街、飯店還有下午茶
@@ -116,7 +130,6 @@
         dateRange: "04月01日",
         title: "4月在台南你帶我吃得肉粽",
         description: "也有看到這個照片 有印象轉角的肉粽小點",
-        // ↓↓↓ 這裡開始編輯 4 月的文章 ↓↓↓
         article: `這兩天記憶有點忘記了 不過我猜有可能是去你家打電腦，
         我們還有雙影幻境還沒有玩玩，需要找一天玩玩!!!!!!!!!!!`, 
         photos: [
@@ -128,7 +141,6 @@
         dateRange: "04月05日",
         title: "4月應該跟4/1是同一次",
         description: "吃吃了你家附近的好吃牛肉湯",
-        // ↓↓↓ 這裡開始編輯 4 月連假的文章 ↓↓↓
         article: `看這個照片應該確定就是去你家打遊戲的日，嘻嘻
         還有很飽的時候吃了很好吃的牛肉湯和飯飯 喜歡`,
         photos: [
@@ -141,7 +153,6 @@
         dateRange: "04月19日",
         title: "4月六福村+密逃日!",
         description: "兩天都是超級超級超級喜歡的行程，第一次一起去遊樂園",
-        // ↓↓↓ 這裡開始編輯文章 ↓↓↓
         article: `第一次一起去遊樂園，我帶你去玩笑奧飛鷹，因為你以前不敢玩
         但是現在你已經很勇敢了，敢玩大怒神了 棒
         好喜歡我們去六福村玩很多東東，雲霄飛車還完了兩三次，人家都快關閉了
@@ -164,7 +175,6 @@
         dateRange: "05月02日 - 05月03日",
         title: "5月臨時說要去墾丁喔!!!",
         description: "臨時說要去墾丁 民宿老闆人很好很多貓咪",
-        // ↓↓↓ 這裡開始編輯文章 ↓↓↓
         article: `墾丁好好玩，我們還在床上抽空氣菸 很搞笑
         還有去海深館拍很多照片、還有看企鵝跟很多花園鰻還有水母(好地方)
         
@@ -184,7 +194,6 @@
         dateRange: "05月27日 - 05月31日",
         title: "5月第一次的立本!!",
         description: "你的第一次去立本玩 好玩，吃了很多好吃的東西還有走了很多的路",
-        // ↓↓↓ 這裡開始編輯文章 ↓↓↓
         article: `第一次去日本很緊張沒關係，因為我會保護你
         喜歡跟你一起去日本玩，我們會一起跑跑到景點，也謝謝你找到早餐這麼好吃的飯店，
         到現在還是很喜歡早餐的咖哩飯，日本的咖哩飯第一名
@@ -219,7 +228,6 @@
         dateRange: "06月15日",
         title: "6月高雄比歐日!",
         description: "目前榮登高雄最喜歡的飯店喔",
-        // ↓↓↓ 這裡開始編輯文章 ↓↓↓
         article: `去高雄比歐吃了好吃的早餐、還有下午茶跟晚餐，比歐送的香水我現在都放在車上，車子臭臭的時候就可以噴，很好用
         
         還有去旗津，很熱超級熱，路上有經過風箏我就跑下車去看，那邊就是一兩個人把一堆風箏綁在一起放，我以為有超多活動在那邊
@@ -236,7 +244,6 @@
         dateRange: "07月11日",
         title: "7月看來又是高雄日",
         description: "吃到超級好吃的漢堡店喔",
-        // ↓↓↓ 這裡開始編輯文章 ↓↓↓
         article: `吃了好吃的漢堡，後來又有再去吃一次，喜歡，尤其是他細細又很有味道的薯條，
         
         住在海邊，我們還很熱的走去圖書館和酒吧喝了一些酒，走在路上的感覺真的很舒服，只是這個時候真的實在是太熱了啦啦啦`,
@@ -251,7 +258,6 @@
         dateRange: "07月19日",
         title: "7月應該是來我家玩喔",
         description: "台中 我猜是來我們家，然後我們就很餓很餓在拉拉破看要吃什麼，最後吃了咖哩飯",
-        // ↓↓↓ 這裡開始編輯文章 ↓↓↓
         article: ``,
         photos: [
           { url: "https://i.ibb.co/Kx4mgKjz/IMG-7954.jpg", date: "0719", message: "走了很久終於有一個不用排隊的咖哩飯" },
@@ -263,7 +269,6 @@
         dateRange: "08月30日 - 08月31日",
         title: "8月我生日ㄉ港迪!",
         description: "又一次生日去香港，不過我們這次的主要目標是港迪!",
-        // ↓↓↓ 這裡開始編輯文章 ↓↓↓
         article: `,謝謝你帶我去香港吃吃喝喝還有港迪，
         
         喜歡你送的項鍊還有很用心很用心的卡片，謝謝你每次都很用心的作卡片還有晚上也都會寫小語給我，喜歡你寫想跟我說的話，我都有看喔!!
@@ -286,7 +291,6 @@
         dateRange: "10月03日 - 10月06日",
         title: "10月蘭嶼的蘭!",
         description: "在夏天的尾巴去了蘭嶼，東西好貴，可是蘭嶼真的好美",
-        // ↓↓↓ 這裡開始編輯文章 ↓↓↓
         article: `這次蘭嶼真的好喜歡，上一次去蘭嶼是五年了，你第一次來
         
         蘭嶼的海、蘭嶼的天空都好漂亮，而且我們買了兩次的飛魚卵炒飯也超級好吃，下次我們要夏天飛魚季的時候來，吃他們最有名的飛魚料理
@@ -309,7 +313,6 @@
         dateRange: "10月25日",
         title: "10月流感酒精路跑",
         description: "我才剛去熊本喝完，連喝六天",
-        // ↓↓↓ 這裡開始編輯文章 ↓↓↓
         article: `我們第一次去酒精路跑，我覺得很好玩，也很開心有喜德的男朋可以一間一間帶我們去喝，下此有再一起去參加，我們喝超級多，而且我還得流感，好險酒精消毒有用!!!!`,
         photos: [
           { url: "https://i.ibb.co/VYZtZQvz/IMG-9575.jpg", date: "1025", message: "我們喝超多的啦 但還是喝不完全部" },
@@ -321,7 +324,6 @@
         dateRange: "11月20日",
         title: "11月終於去洗底片相機了",
         description: "我終於去洗底片相機了啦哈哈哈",
-        // ↓↓↓ 這裡開始編輯文章 ↓↓↓
         article: `底片相機應該要標日期，不然放了兩三年洗出來都不知道是什麼時候了啦，不過也很喜歡底片相機洗出來的樣子，我們去日本也買了好幾個`,
         photos: [
           { url: "https://i.ibb.co/1GZZhJZt/IMG-0278.jpg", date: "1120", message: "合照乙張" },
@@ -334,7 +336,6 @@
         dateRange: "12月06日",
         title: "12月逢甲泡湯日",
         description: "謝謝你找了很棒很棒的湯屋",
-        // ↓↓↓ 這裡開始編輯文章 ↓↓↓
         article: `天氣已經開始慢慢變冷了，喜歡冬天瘋狂泡湯，這樣就很舒服，泡湯完也要吃泡麵 耶
         
         我們泡完湯還去那個免費的泡腳池，那邊也好舒服喔，晚上又吃了一次織田信長，炸牡蠣我們下次要吃飽再點`,
@@ -350,7 +351,6 @@
         dateRange: "12月13日",
         title: "12月屁眼婚禮日",
         description: "參加了你的同事的婚禮，給你當一天E人",
-        // ↓↓↓ 這裡開始編輯文章 ↓↓↓
         article: `感覺你們同事之間的感情真的很好，果然是一群男孩子聚集會有的歡樂，雖然菜色不是我喜歡的，不過可以跟你一起來參加別人的婚禮我也很開心喔喔喔喔
         
         後面也有摸到超級好動的大狗狗，看得出來泰瑞哥也有在用心照顧他的狗狗`,
@@ -363,7 +363,6 @@
         dateRange: "2026年跨年",
         title: "跨年泡湯鞋嘞",
         description: "啊鞋嘞?",
-        // ↓↓↓ 這裡開始編輯文章 ↓↓↓
         article: `跨年那天你來我家，想了很久還是決定待在家裡
         
         隔天我們睡了很晚，一整天都在家裡很舒服，就我們兩個。
@@ -440,6 +439,13 @@
 
       useEffect(() => {
         setMounted(true);
+        // Preload cover images (first image of each album)
+        ALBUMS.forEach(album => {
+          if (album.photos && album.photos.length > 0) {
+            const img = new Image();
+            img.src = album.photos[0].url;
+          }
+        });
       }, []);
 
       const openAlbum = (albumId) => {
@@ -699,6 +705,7 @@
     // 翻轉卡片組件
     function FlipCard({ photo }) {
       const [isFlipped, setIsFlipped] = useState(false);
+      const [imageLoaded, setImageLoaded] = useState(false); // 新增圖片載入狀態
 
       return (
         <div 
@@ -710,10 +717,19 @@
             {/* 正面：照片 */}
             {/* 修改：背景改為 bg-sky-50，邊框 border-white */}
             <div className="absolute w-full h-full backface-hidden rounded-2xl overflow-hidden shadow-md border-[3px] border-white bg-sky-50 transition-shadow flex items-center justify-center">
+              
+              {/* 如果圖片還沒載入，顯示轉圈圈 */}
+              {!imageLoaded && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+                  <div className="loader"></div>
+                </div>
+              )}
+
               <img 
                 src={photo.url} 
                 alt="Memory" 
-                className="w-full h-full object-contain"
+                className={`w-full h-full object-contain ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+                onLoad={() => setImageLoaded(true)} // 圖片載入完成後設為 true
               />
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
                 <div className="text-white text-xs font-medium flex items-center gap-1">
